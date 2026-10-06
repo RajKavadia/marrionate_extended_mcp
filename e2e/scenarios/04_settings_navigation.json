@@ -1,0 +1,14 @@
+{
+  "name": "settings_navigation",
+  "description": "Walk the settings hub into About and back. Covers keyed navigation tiles plus a pop.",
+  "commands": [
+    { "action": "tap", "key": "home_settings" },
+    { "action": "assert_visible", "key": "settings_screen" },
+    { "action": "assert_visible", "key": "settings_items" },
+    { "action": "assert_visible", "key": "settings_about" },
+    { "action": "tap", "key": "settings_about" },
+    { "action": "assert_visible", "key": "about_version" },
+    { "action": "tap", "key": "about_settings_button" },
+    { "action": "assert_visible", "key": "settings_screen" }
+  ]
+}

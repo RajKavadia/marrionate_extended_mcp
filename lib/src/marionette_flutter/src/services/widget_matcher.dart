@@ -1,0 +1,272 @@
+import 'dart:convert';
+
+import 'package:flutter/widgets.dart';
+import 'package:marrionate_extended_mcp/src/marionette_flutter/src/binding/marionette_configuration.dart';
+
+/// Abstract base class for matching widgets in the Flutter widget tree.
+sealed class WidgetMatcher {
+  const WidgetMatcher();
+
+  /// Checks if the given [element] matches this matcher's criteria.
+  bool matches(Element element, MarionetteConfiguration configuration);
+
+  /// Creates a matcher from a JSON map.
+  /// If multiple fields are present, precedence is:
+  /// 'focused' > coordinates (x & y) > 'key' > 'identifier' > 'text' > 'type'.
+  static WidgetMatcher fromJson(Map<String, dynamic> json) {
+    // Focused matcher has highest precedence because it bypasses tree search.
+    if (json.containsKey('focused')) {
+      return const FocusedElementMatcher();
+    } else if (json.containsKey('x') && json.containsKey('y')) {
+      return CoordinatesMatcher.fromJson(json);
+    } else if (json.containsKey('key')) {
+      return KeyMatcher.fromJson(json);
+    } else if (json.containsKey('identifier')) {
+      return IdentifierMatcher.fromJson(json);
+    } else if (json.containsKey('text')) {
+      return TextMatcher.fromJson(json);
+    } else if (json.containsKey('type')) {
+      return TypeStringMatcher.fromJson(json);
+    } else {
+      throw ArgumentError(
+        'Matcher JSON must contain "focused", "x" & "y", "key", '
+        '"identifier", "text", or "type" field',
+      );
+    }
+  }
+
+  /// Parses the optional `ancestor_keys` scope that accompanies a matcher.
+  ///
+  /// The scope is not part of the target matcher: it names the subtree the
+  /// target is searched in, so that a key repeated across identical subtrees
+  /// (grid cells, embedded app instances) can be disambiguated. The keys are
+  /// ordered outermost first and nest — each one is looked up inside the
+  /// subtree of the previous — so a chain can reach a cell whose own key also
+  /// repeats, e.g. `['session_2', 'grid.cell_3']`.
+  ///
+  /// Returns an empty list when `ancestor_keys` is absent, meaning the whole
+  /// tree is searched.
+  ///
+  /// Extension params arrive as a flat `string → string` map, so the list
+  /// travels JSON-encoded — the same convention the custom-extension path uses
+  /// for nested values, and one that (unlike a delimiter) cannot collide with
+  /// characters inside a key.
+  static List<KeyMatcher> ancestorsFromJson(Map<String, dynamic> json) {
+    final raw = json['ancestor_keys'];
+    if (raw == null) {
+      return const [];
+    }
+
+    final decoded = raw is String ? _decodeAncestorKeys(raw) : raw;
+    if (decoded is! List) {
+      throw ArgumentError(
+        '"ancestor_keys" must be a JSON array of key strings, got: $raw',
+      );
+    }
+
+    return [
+      for (final key in decoded)
+        if (key is String)
+          KeyMatcher(key)
+        else
+          throw ArgumentError(
+            '"ancestor_keys" must contain only key strings, got: $key',
+          ),
+    ];
+  }
+
+  static Object? _decodeAncestorKeys(String raw) {
+    try {
+      return jsonDecode(raw);
+    } on FormatException catch (e) {
+      throw ArgumentError(
+        '"ancestor_keys" must be a JSON array of key strings, got: $raw (${e.message})',
+      );
+    }
+  }
+
+  /// Converts this matcher to a JSON-serializable map.
+  Map<String, dynamic> toJson();
+}
+
+/// Matches the currently focused element.
+///
+/// This matcher is not used for widget tree traversal and is handled as a
+/// special case by [TextInputSimulator].
+class FocusedElementMatcher extends WidgetMatcher {
+  const FocusedElementMatcher();
+
+  @override
+  bool matches(Element element, MarionetteConfiguration configuration) {
+    return false;
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{'focused': true};
+  }
+}
+
+/// Matches by screen coordinates. This is a special matcher that doesn't
+/// actually match widgets - it's used as a fast path for tapping at
+/// specific screen positions without searching the widget tree.
+class CoordinatesMatcher extends WidgetMatcher {
+  const CoordinatesMatcher(this.x, this.y);
+
+  factory CoordinatesMatcher.fromJson(Map<String, dynamic> json) {
+    final x = double.tryParse(json['x'].toString());
+    final y = double.tryParse(json['y'].toString());
+    if (x == null || y == null) {
+      throw ArgumentError(
+        'Coordinates "x" and "y" must be valid numbers, '
+        'got x=${json['x']}, y=${json['y']}',
+      );
+    }
+    return CoordinatesMatcher(x, y);
+  }
+
+  final double x;
+  final double y;
+
+  Offset get offset => Offset(x, y);
+
+  @override
+  bool matches(Element element, MarionetteConfiguration configuration) {
+    // CoordinatesMatcher doesn't match widgets - it's handled specially
+    // in GestureDispatcher.tap() as a fast path.
+    return false;
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{'x': x, 'y': y};
+  }
+}
+
+/// Matches widgets by their `ValueKey<String>` key.
+class KeyMatcher extends WidgetMatcher {
+  const KeyMatcher(this.keyValue);
+
+  factory KeyMatcher.fromJson(Map<String, dynamic> json) {
+    return KeyMatcher(json['key'] as String);
+  }
+
+  final String keyValue;
+
+  @override
+  bool matches(Element element, MarionetteConfiguration configuration) {
+    final key = element.widget.key;
+    if (key is ValueKey<String>) {
+      return key.value == keyValue;
+    }
+    return false;
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{'key': keyValue};
+  }
+}
+
+/// Matches widgets by their `Semantics` identifier.
+///
+/// Unlike [TextMatcher], which is deliberately kept away from `Semantics`
+/// annotations (see the rationale on `MarionetteConfiguration`), the
+/// accessibility `identifier` is an explicit, unique, machine-readable handle
+/// set intentionally by the developer. It only ever lives on a [Semantics]
+/// widget — never on the inner control — so there is no ambiguity about which
+/// element to match. The matched `Semantics` wrapper shares the bounds of (and
+/// is hittable through) its child, so gestures land on the real control.
+///
+/// Convenience identifier parameters that other widgets forward to a generated
+/// `Semantics` are covered by the same mechanism: e.g. `Text(semanticsIdentifier:
+/// ...)` builds a `Semantics(identifier: ...)` wrapper, which this matcher then
+/// matches like any other. Per-span identifiers (`TextSpan.semanticsIdentifier`
+/// / `InlineSpan.semanticsIdentifier`) are applied at the `SemanticsNode` level
+/// inside `RenderParagraph`, not as widgets, so they are not matchable here.
+class IdentifierMatcher extends WidgetMatcher {
+  const IdentifierMatcher(this.identifierValue);
+
+  factory IdentifierMatcher.fromJson(Map<String, dynamic> json) {
+    return IdentifierMatcher(json['identifier'] as String);
+  }
+
+  final String identifierValue;
+
+  @override
+  bool matches(Element element, MarionetteConfiguration configuration) {
+    if (identifierValue.isEmpty) {
+      return false;
+    }
+
+    if (element.widget case Semantics(:final properties)) {
+      return properties.identifier == identifierValue;
+    }
+    return false;
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{'identifier': identifierValue};
+  }
+}
+
+/// Matches widgets by their text content.
+class TextMatcher extends WidgetMatcher {
+  const TextMatcher(this.text);
+
+  factory TextMatcher.fromJson(Map<String, dynamic> json) {
+    return TextMatcher(json['text'] as String);
+  }
+
+  final String text;
+
+  @override
+  bool matches(Element element, MarionetteConfiguration configuration) {
+    final extractedText = configuration.extractTextFromWidget(element);
+    return extractedText == text;
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{'text': text};
+  }
+}
+
+/// Matches widgets by their runtime type.
+class TypeMatcher extends WidgetMatcher {
+  const TypeMatcher(this.type);
+
+  final Type type;
+
+  @override
+  bool matches(Element element, MarionetteConfiguration configuration) {
+    return element.widget.runtimeType == type;
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    throw UnsupportedError('TypeMatcher does not support JSON serialization');
+  }
+}
+
+/// Matches widgets by their runtime type as a string.
+class TypeStringMatcher extends WidgetMatcher {
+  const TypeStringMatcher(this.typeName);
+
+  factory TypeStringMatcher.fromJson(Map<String, dynamic> json) {
+    return TypeStringMatcher(json['type'] as String);
+  }
+
+  final String typeName;
+
+  @override
+  bool matches(Element element, MarionetteConfiguration configuration) {
+    return element.widget.runtimeType.toString() == typeName;
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{'type': typeName};
+  }
+}

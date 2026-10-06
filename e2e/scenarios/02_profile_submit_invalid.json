@@ -1,0 +1,11 @@
+{
+  "name": "profile_submit_invalid",
+  "description": "Submitting an empty form must not report success. Proves assertions can catch a wrong outcome, not just a present element.",
+  "commands": [
+    { "action": "tap", "key": "home_profile" },
+    { "action": "assert_visible", "key": "submit_button" },
+    { "action": "tap", "key": "submit_button" },
+    { "action": "assert_visible", "key": "profile_result" },
+    { "action": "assert_text_contains", "key": "profile_result", "text": "invalid" }
+  ]
+}

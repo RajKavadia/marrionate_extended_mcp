@@ -1,0 +1,14 @@
+{
+  "name": "mouse_double_tap",
+  "description": "Double-tap the mouse target and assert the secondary-tap counter increases by ten.",
+  "commands": [
+    { "action": "tap", "key": "home_settings" },
+    { "action": "tap", "key": "settings_mouse_tap" },
+    { "action": "assert_visible", "key": "mouse_tap_target" },
+    { "action": "assert_text_contains", "key": "secondary_tap_count", "text": "0" },
+    { "action": "double_tap", "key": "mouse_tap_target" },
+    { "action": "assert_text_contains", "key": "secondary_tap_count", "text": "10" },
+    { "action": "tap", "key": "reset_secondary_button" },
+    { "action": "assert_text_contains", "key": "secondary_tap_count", "text": "0" }
+  ]
+}

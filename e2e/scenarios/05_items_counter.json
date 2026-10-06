@@ -1,0 +1,14 @@
+{
+  "name": "items_counter",
+  "description": "Increment the counter three times and assert the resulting text, then assert the row count.",
+  "commands": [
+    { "action": "tap", "key": "home_settings" },
+    { "action": "tap", "key": "settings_items" },
+    { "action": "assert_visible", "key": "items_counter" },
+    { "action": "assert_text_contains", "key": "items_counter", "text": "Count: 0" },
+    { "action": "tap", "key": "items_increment" },
+    { "action": "tap", "key": "items_increment" },
+    { "action": "tap", "key": "items_increment" },
+    { "action": "assert_text_contains", "key": "items_counter", "text": "Count: 3" }
+  ]
+}

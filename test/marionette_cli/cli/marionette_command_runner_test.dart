@@ -1,0 +1,110 @@
+import 'package:marrionate_extended_mcp/src/marionette_cli/src/cli/marionette_command_runner.dart';
+import 'package:test/test.dart';
+
+void main() {
+  late MarionetteCommandRunner runner;
+
+  setUp(() {
+    runner = MarionetteCommandRunner();
+  });
+
+  group('MarionetteCommandRunner', () {
+    test('no command prints usage and returns 0', () async {
+      final exitCode = await runner.run([]);
+      expect(exitCode, equals(0));
+    });
+
+    test('unknown command prints usage and returns 0', () async {
+      final exitCode = await runner.run(['nonexistent']);
+      expect(exitCode, equals(0));
+    });
+
+    test('all expected commands are registered', () {
+      final commandNames = runner.commands.keys.toSet();
+
+      const expected = {
+        'register',
+        'unregister',
+        'list',
+        'get-interactive-elements',
+        'tap',
+        'secondary-tap',
+        'double-tap',
+        'long-press',
+        'pinch-zoom',
+        'swipe',
+        'enter-text',
+        'press-key',
+        'press-back-button',
+        'scroll-to',
+        'take-screenshots',
+        'record-video',
+        'get-logs',
+        'set-device-config',
+        'hot-reload',
+        'hot-restart',
+        'doctor',
+        'help-ai',
+        'mcp',
+        'help',
+      };
+
+      expect(commandNames, equals(expected));
+    });
+
+    test('register with missing args returns 64', () async {
+      final exitCode = await runner.run(['register']);
+      expect(exitCode, equals(64));
+    });
+
+    test('unregister with no args returns 64', () async {
+      final exitCode = await runner.run(['unregister']);
+      expect(exitCode, equals(64));
+    });
+
+    test('mutually exclusive --instance and --uri returns 64', () async {
+      final exitCode = await runner.run([
+        '-i',
+        'foo',
+        '--uri',
+        'ws://127.0.0.1:8181/ws',
+        'tap',
+        '--key',
+        'k',
+      ]);
+      expect(exitCode, equals(64));
+    });
+
+    test('set-device-config rejects an unknown brightness with 64', () async {
+      final exitCode = await runner.run([
+        '-i',
+        'foo',
+        'set-device-config',
+        '--platform-brightness',
+        'sepia',
+      ]);
+      expect(exitCode, equals(64));
+    });
+
+    test('set-device-config rejects a non-boolean bold-text with 64', () async {
+      final exitCode = await runner.run([
+        '-i',
+        'foo',
+        'set-device-config',
+        '--bold-text',
+        'yes',
+      ]);
+      expect(exitCode, equals(64));
+    });
+
+    test('help-ai returns 0 without --instance or --uri', () async {
+      final exitCode = await runner.run(['help-ai']);
+      expect(exitCode, equals(0));
+    });
+
+    test('list returns 0 with empty registry', () async {
+      final exitCode = await runner.run(['list']);
+      expect(exitCode, equals(0));
+    });
+  });
+}

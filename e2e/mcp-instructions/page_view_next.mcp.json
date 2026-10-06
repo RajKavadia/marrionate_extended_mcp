@@ -1,0 +1,89 @@
+{
+  "format": "flutter-e2e-mcp-instructions",
+  "formatVersion": 1,
+  "server": "flutter-e2e-mcp",
+  "scenario": "page_view_next",
+  "description": "Open the page view screen and advance from page zero to page one with the Next button.",
+  "transportPreference": "marionetteFirst",
+  "attachTargetPlaceholder": "{{VM_SERVICE_URI}}",
+  "attach": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": {
+      "name": "connect_app",
+      "arguments": {
+        "target": "{{VM_SERVICE_URI}}",
+        "kind": "vmService"
+      }
+    }
+  },
+  "instructions": [
+    {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_tap",
+        "arguments": {
+          "key": "home_settings"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_tap",
+        "arguments": {
+          "key": "settings_page_view"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 4,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_assert_visible",
+        "arguments": {
+          "key": "page_view_screen"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 5,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_assert_visible",
+        "arguments": {
+          "key": "page_0"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 6,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_tap",
+        "arguments": {
+          "key": "page_view_next"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 7,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_assert_visible",
+        "arguments": {
+          "key": "page_1"
+        }
+      }
+    }
+  ]
+}

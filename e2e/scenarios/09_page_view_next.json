@@ -1,0 +1,12 @@
+{
+  "name": "page_view_next",
+  "description": "Open the page view screen and advance from page zero to page one with the Next button.",
+  "commands": [
+    { "action": "tap", "key": "home_settings" },
+    { "action": "tap", "key": "settings_page_view" },
+    { "action": "assert_visible", "key": "page_view_screen" },
+    { "action": "assert_visible", "key": "page_0" },
+    { "action": "tap", "key": "page_view_next" },
+    { "action": "assert_visible", "key": "page_1" }
+  ]
+}

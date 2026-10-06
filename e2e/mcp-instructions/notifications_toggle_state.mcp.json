@@ -1,0 +1,126 @@
+{
+  "format": "flutter-e2e-mcp-instructions",
+  "formatVersion": 1,
+  "server": "flutter-e2e-mcp",
+  "scenario": "notifications_toggle_state",
+  "description": "Toggle every switch and assert the state summary changes. Uses the real switch handlers, not the upstream no-ops.",
+  "transportPreference": "marionetteFirst",
+  "attachTargetPlaceholder": "{{VM_SERVICE_URI}}",
+  "attach": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": {
+      "name": "connect_app",
+      "arguments": {
+        "target": "{{VM_SERVICE_URI}}",
+        "kind": "vmService"
+      }
+    }
+  },
+  "instructions": [
+    {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_tap",
+        "arguments": {
+          "key": "home_notifications"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_assert_visible",
+        "arguments": {
+          "key": "notifications_state"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 4,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_assert_text_contains",
+        "arguments": {
+          "key": "notifications_state",
+          "text": "push=true"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 5,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_tap",
+        "arguments": {
+          "key": "email_notifications_switch"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 6,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_assert_text_contains",
+        "arguments": {
+          "key": "notifications_state",
+          "text": "email=true"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 7,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_tap",
+        "arguments": {
+          "key": "push_notifications_switch"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 8,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_assert_text_contains",
+        "arguments": {
+          "key": "notifications_state",
+          "text": "push=false"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 9,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_tap",
+        "arguments": {
+          "key": "inapp_notifications_switch"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 10,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_assert_text_contains",
+        "arguments": {
+          "key": "notifications_state",
+          "text": "inapp=false"
+        }
+      }
+    }
+  ]
+}

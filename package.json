@@ -1,0 +1,46 @@
+{
+  "name": "flutter-e2e-mcp",
+  "mcpName": "io.github.your-org/flutter-e2e",
+  "version": "0.1.0",
+  "description": "MCP server for Flutter end-to-end automation - unified marionette and flutter-skill tooling with JSON-only scenario replay",
+  "main": "index.js",
+  "bin": {
+    "flutter-e2e-mcp": "./bin/cli.js"
+  },
+  "scripts": {
+    "postinstall": "node scripts/postinstall.js",
+    "server": "node bin/cli.js serve",
+    "test": "dart test"
+  },
+  "keywords": [
+    "flutter",
+    "e2e",
+    "testing",
+    "mcp",
+    "automation",
+    "ai",
+    "agent"
+  ],
+  "author": "your-org",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/flutter-e2e.git"
+  },
+  "homepage": "https://github.com/your-org/flutter-e2e",
+  "bugs": {
+    "url": "https://github.com/your-org/flutter-e2e/issues"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "scripts/",
+    "pubspec.yaml",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ]
+}

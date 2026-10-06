@@ -1,0 +1,8 @@
+builders:
+  e2e_key_injector:
+    import: "package:e2e_key_generator/builder.dart"
+    builder_factories: ["e2eKeyInjectorBuilder"]
+    build_extensions:
+      ".dart":
+        - ".e2e_keys.dart"
+    auto_apply: dependents

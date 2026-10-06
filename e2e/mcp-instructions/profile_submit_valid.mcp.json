@@ -1,0 +1,114 @@
+{
+  "format": "flutter-e2e-mcp-instructions",
+  "formatVersion": 1,
+  "server": "flutter-e2e-mcp",
+  "scenario": "profile_submit_valid",
+  "description": "Fill the profile form with valid input and assert the submitted result.",
+  "transportPreference": "marionetteFirst",
+  "attachTargetPlaceholder": "{{VM_SERVICE_URI}}",
+  "attach": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": {
+      "name": "connect_app",
+      "arguments": {
+        "target": "{{VM_SERVICE_URI}}",
+        "kind": "vmService"
+      }
+    }
+  },
+  "instructions": [
+    {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_tap",
+        "arguments": {
+          "key": "home_profile"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_assert_visible",
+        "arguments": {
+          "key": "name_field"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 4,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_assert_visible",
+        "arguments": {
+          "key": "submit_button"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 5,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_enter_text",
+        "arguments": {
+          "key": "name_field",
+          "text": "Ada Lovelace"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 6,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_enter_text",
+        "arguments": {
+          "key": "email_field",
+          "text": "ada@example.com"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 7,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_tap",
+        "arguments": {
+          "key": "submit_button"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 8,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_assert_visible",
+        "arguments": {
+          "key": "profile_result"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 9,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_assert_text_contains",
+        "arguments": {
+          "key": "profile_result",
+          "text": "submitted"
+        }
+      }
+    }
+  ]
+}

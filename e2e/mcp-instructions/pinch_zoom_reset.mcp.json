@@ -1,0 +1,91 @@
+{
+  "format": "flutter-e2e-mcp-instructions",
+  "formatVersion": 1,
+  "server": "flutter-e2e-mcp",
+  "scenario": "pinch_zoom_reset",
+  "description": "Zoom, then reset and assert the scale text returns to 1.00. Covers gesture plus a state-resetting control.",
+  "transportPreference": "marionetteFirst",
+  "attachTargetPlaceholder": "{{VM_SERVICE_URI}}",
+  "attach": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": {
+      "name": "connect_app",
+      "arguments": {
+        "target": "{{VM_SERVICE_URI}}",
+        "kind": "vmService"
+      }
+    }
+  },
+  "instructions": [
+    {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_tap",
+        "arguments": {
+          "key": "home_settings"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_tap",
+        "arguments": {
+          "key": "settings_pinch_zoom"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 4,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_assert_visible",
+        "arguments": {
+          "key": "zoomable"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 5,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_assert_text_contains",
+        "arguments": {
+          "key": "scale_text",
+          "text": "Scale: 1.00"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 6,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_tap",
+        "arguments": {
+          "key": "reset_zoom_button"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 7,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_assert_text_contains",
+        "arguments": {
+          "key": "scale_text",
+          "text": "Scale: 1.00"
+        }
+      }
+    }
+  ]
+}
