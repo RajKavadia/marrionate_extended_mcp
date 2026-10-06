@@ -1,0 +1,194 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:marrionate_extended_mcp/src/marionette_flutter/src/binding/extensions/device_config_extensions.dart';
+import 'package:marrionate_extended_mcp/src/marionette_flutter/src/binding/extensions/gesture_extensions.dart';
+import 'package:marrionate_extended_mcp/src/marionette_flutter/src/binding/extensions/info_extensions.dart';
+import 'package:marrionate_extended_mcp/src/marionette_flutter/src/binding/extensions/keyboard_extensions.dart';
+import 'package:marrionate_extended_mcp/src/marionette_flutter/src/binding/extensions/media_extensions.dart';
+import 'package:marrionate_extended_mcp/src/marionette_flutter/src/binding/extensions/navigation_extensions.dart';
+import 'package:marrionate_extended_mcp/src/marionette_flutter/src/binding/extensions/text_extensions.dart';
+import 'package:marrionate_extended_mcp/src/marionette_flutter/src/binding/marionette_configuration.dart';
+import 'package:marrionate_extended_mcp/src/marionette_flutter/src/services/create_screencast_server.dart';
+import 'package:marrionate_extended_mcp/src/marionette_flutter/src/services/device_config_service.dart';
+import 'package:marrionate_extended_mcp/src/marionette_flutter/src/services/element_tree_finder.dart';
+import 'package:marrionate_extended_mcp/src/marionette_flutter/src/services/gesture_dispatcher.dart';
+import 'package:marrionate_extended_mcp/src/marionette_flutter/src/services/keyboard_simulator.dart';
+import 'package:marrionate_extended_mcp/src/marionette_flutter/src/services/log_store.dart';
+import 'package:marrionate_extended_mcp/src/marionette_flutter/src/services/screencast_server.dart';
+import 'package:marrionate_extended_mcp/src/marionette_flutter/src/services/screencast_service.dart';
+import 'package:marrionate_extended_mcp/src/marionette_flutter/src/services/screenshot_service.dart';
+import 'package:marrionate_extended_mcp/src/marionette_flutter/src/services/scroll_simulator.dart';
+import 'package:marrionate_extended_mcp/src/marionette_flutter/src/services/text_input_simulator.dart';
+import 'package:marrionate_extended_mcp/src/marionette_flutter/src/services/widget_finder.dart';
+
+/// A custom binding that extends Flutter's default binding to provide
+/// integration points for the Marionette MCP.
+class MarionetteBinding extends WidgetsFlutterBinding {
+  /// Creates and initializes the binding with the given configuration.
+  ///
+  /// Returns the singleton instance of [MarionetteBinding].
+  ///
+  /// Flutter only allows a single [WidgetsBinding] instance per app, so this
+  /// must be called before any other plugin has a chance to install its own
+  /// binding subclass. A common way to trip over this without realizing it
+  /// is calling `SentryFlutter.init()` first: it installs a
+  /// `WidgetsFlutterBindingIntegration` that initializes `WidgetsBinding`
+  /// itself before running `appRunner`, so by the time this method runs
+  /// inside `appRunner`, the "real" binding is already spoken for. Flutter's
+  /// binding constructor then fails an internal assertion, and — because
+  /// that happens inside Sentry's error-capturing zone — the failure is
+  /// swallowed rather than surfaced, leaving the app hung on the splash
+  /// screen with no exception, crash, or log output. See
+  /// https://github.com/leancodepl/marionette_mcp/issues/96.
+  ///
+  /// To avoid this, call [ensureInitialized] early in `main()`, before any
+  /// other plugin initialization that might touch `WidgetsBinding`. When a
+  /// plugin installs the binding from inside a callback it runs for you (as
+  /// `SentryFlutter.init()` does with its `appRunner`), call
+  /// [ensureInitialized] before that plugin — not inside the callback.
+  static MarionetteBinding ensureInitialized([
+    MarionetteConfiguration configuration = const MarionetteConfiguration(),
+  ]) {
+    if (_instance == null) {
+      final existing = _existingWidgetsBinding();
+      if (existing != null) {
+        throw FlutterError.fromParts([
+          ErrorSummary(
+            'MarionetteBinding.ensureInitialized() was called after a '
+            '${existing.runtimeType} was already installed as the '
+            'WidgetsBinding.',
+          ),
+          ErrorDescription(
+            'Flutter only supports a single WidgetsBinding instance per '
+            'app. This usually happens when another plugin initializes the '
+            'binding first — for example, a plugin that installs its own '
+            'binding from within a callback that runs before your app code.',
+          ),
+          ErrorHint(
+            'Call MarionetteBinding.ensureInitialized() early in main(), '
+            'before any other plugin initialization that might touch '
+            'WidgetsBinding. If a plugin initializes the binding from '
+            'inside a callback it invokes for you (such as an appRunner), '
+            'call MarionetteBinding.ensureInitialized() before that plugin '
+            'rather than inside the callback.',
+          ),
+        ]);
+      }
+      MarionetteBinding._(configuration);
+    }
+    return instance;
+  }
+
+  /// Returns the currently installed [WidgetsBinding], if any, without
+  /// throwing when none has been initialized yet.
+  static WidgetsBinding? _existingWidgetsBinding() {
+    try {
+      return WidgetsBinding.instance;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// The singleton instance of [MarionetteBinding].
+  static MarionetteBinding get instance => BindingBase.checkInstance(_instance);
+  static MarionetteBinding? _instance;
+
+  /// The device config service, or `null` when the binding was never
+  /// installed — a release build, or an app that doesn't use Marionette.
+  ///
+  /// Unlike [instance] this never throws, so `MarionetteDeviceConfig` can
+  /// degrade to a pass-through instead of taking the app down with it.
+  static DeviceConfigService? get maybeDeviceConfigService =>
+      _instance?._deviceConfigService;
+
+  MarionetteBinding._(this.configuration);
+
+  /// Configuration for the Marionette extensions.
+  final MarionetteConfiguration configuration;
+
+  // Service instances
+  late final DeviceConfigService _deviceConfigService;
+  late final ElementTreeFinder _elementTreeFinder;
+  late final GestureDispatcher _gestureDispatcher;
+  late final KeyboardSimulator _keyboardSimulator;
+  LogStore? _logStore;
+  late final ScreenshotService _screenshotService;
+  late final ScrollSimulator _scrollSimulator;
+  late final TextInputSimulator _textInputSimulator;
+  late final ScreencastServer _screencastServer;
+  late final WidgetFinder _widgetFinder;
+
+  @override
+  void initInstances() {
+    super.initInstances();
+    _instance = this;
+
+    _deviceConfigService = DeviceConfigService();
+    _widgetFinder = WidgetFinder();
+    _elementTreeFinder = ElementTreeFinder(configuration);
+    _gestureDispatcher = GestureDispatcher();
+    _screenshotService = ScreenshotService(
+      maxScreenshotSize: configuration.maxScreenshotSize,
+    );
+    _screencastServer = createScreencastServer(
+      screencastServiceFactory: ({Size? maxSize}) =>
+          ScreencastService(maxSize: maxSize),
+      viewportSizeProvider: () {
+        final renderView = renderViews.firstOrNull;
+        return renderView?.flutterView.physicalSize ?? Size.zero;
+      },
+    );
+    _scrollSimulator = ScrollSimulator(_gestureDispatcher, _widgetFinder);
+    _textInputSimulator = TextInputSimulator(_widgetFinder);
+    _keyboardSimulator = KeyboardSimulator();
+
+    if (configuration.logCollector != null) {
+      _logStore = LogStore();
+      configuration.logCollector!.start(_logStore!.add);
+    }
+  }
+
+  @override
+  void initServiceExtensions() {
+    super.initServiceExtensions();
+
+    registerInfoExtensions(
+      elementTreeFinder: _elementTreeFinder,
+      widgetFinder: _widgetFinder,
+      configuration: configuration,
+      logStoreProvider: () => _logStore,
+      // TODO(KrzysztofMamak): Consider flag
+      enableSessionReports: configuration.enableSessionReports,
+    );
+    registerGestureExtensions(
+      gestureDispatcher: _gestureDispatcher,
+      widgetFinder: _widgetFinder,
+      scrollSimulator: _scrollSimulator,
+      configuration: configuration,
+    );
+    registerTextExtensions(
+      textInputSimulator: _textInputSimulator,
+      configuration: configuration,
+    );
+    registerKeyboardExtensions(
+      keyboardSimulator: _keyboardSimulator,
+    );
+    registerMediaExtensions(
+      screenshotService: _screenshotService,
+      screencastServer: _screencastServer,
+    );
+    registerDeviceConfigExtensions(
+      deviceConfigService: _deviceConfigService,
+    );
+    // This acts like a normal, non-predictive back. For details, see
+    // https://github.com/flutter/flutter/blob/main/packages/flutter/lib/src/widgets/binding.dart#L1196
+    registerNavigationExtensions(handlePopRoute: handlePopRoute);
+  }
+
+  @override
+  Future<void> reassembleApplication() async {
+    _logStore?.clear();
+    await _screencastServer.stopScreencast();
+    return super.reassembleApplication();
+  }
+}

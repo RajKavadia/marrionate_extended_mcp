@@ -1,0 +1,592 @@
+import 'dart:io';
+
+import 'package:args/command_runner.dart';
+
+class HelpAiCommand extends Command<int> {
+  @override
+  String get name => 'help-ai';
+
+  @override
+  String get description =>
+      'Print a comprehensive CLI reference designed for AI agent consumption.';
+
+  @override
+  int run() {
+    stdout.writeln(_reference);
+    return 0;
+  }
+}
+
+const _reference = r'''
+# Marionette CLI — AI Agent Reference
+
+Marionette CLI controls Flutter apps running in debug mode. It supports
+multiple simultaneous app instances via a named instance registry, or direct
+URI connections for fully stateless operation.
+
+## Workflow
+
+### Option A: Named Instances (stateful)
+
+1. Start your Flutter app(s) in debug mode and note VM service URI(s)
+   (printed in console, e.g., ws://127.0.0.1:XXXXX/ws).
+2. Register each app: `marionette register <name> <uri>`
+3. Interact using: `marionette -i <name> <command> [args]`
+4. Clean up when done: `marionette unregister <name>`
+
+### Option B: Direct URI (stateless)
+
+1. Start your Flutter app in debug mode and note the VM service URI.
+2. Interact directly: `marionette --uri <ws-uri> <command> [args]`
+
+No registration, no cleanup. Each command opens a fresh WebSocket connection,
+executes, and disconnects. If the app enables session reports
+(MarionetteConfiguration(enableSessionReports: true)), every invocation also
+gets its own fresh session directory, appending one line to its steps.md (see
+--session below).
+
+## Global Options
+
+  -i, --instance <name>    Target instance (required unless --uri is used)
+      --uri <ws-uri>       VM service WebSocket URI — bypasses registry,
+                           mutually exclusive with --instance
+      --timeout <seconds>  Connection timeout (default: 5)
+      --session <title>    Session title for this command's directory
+                           (.marionette/sessions/<title>-<timestamp>/).
+                           Keep it under ~60 characters — longer is
+                           truncated. Every invocation gets its own fresh
+                           directory.
+      --session-dir <path> Base directory .marionette/sessions/ is created
+                           under (default: current directory, or
+                           $MARIONETTE_SESSION_DIR if set)
+
+## Commands
+
+### register <name> <uri>
+
+Register a Flutter app instance.
+
+  Arguments:
+    name   Any identifier without "/", "\", or control characters (e.g. my-app, 192.168.1.1:5555)
+    uri    VM service WebSocket URI (e.g., ws://127.0.0.1:8181/ws)
+
+  Example:
+    marionette register my-app ws://127.0.0.1:8181/ws
+
+  Output (stdout):
+    Registered instance "my-app" → ws://127.0.0.1:8181/ws
+
+  Output if overwriting (stderr):
+    Updated existing instance "my-app" → ws://127.0.0.1:8181/ws
+
+  Exit codes: 0 success, 64 invalid name/usage
+
+---
+
+### unregister <name>
+
+Remove a registered instance.
+
+  Arguments:
+    name   Instance name to remove
+
+  Example:
+    marionette unregister my-app
+
+  Output (stdout):
+    Unregistered instance "my-app".
+
+  Output if not found (stderr, exit 1):
+    Instance "my-app" not found.
+
+---
+
+### list
+
+List all registered instances.
+
+  Example:
+    marionette list
+
+  Output (stdout):
+    Registered instances:
+
+      my-app
+        URI: ws://127.0.0.1:8181/ws
+        Registered: 2026-02-12 15:30:00.000
+
+  Output if empty (stdout):
+    No instances registered.
+
+---
+
+### get-interactive-elements
+
+List interactive UI elements in the app's widget tree.
+
+  Requires: -i <instance> or --uri <ws-uri>
+
+  Options:
+    --ancestor-keys <str>  List only the elements inside the subtree of the
+                           element with this key (grid cells, repeated
+                           cards). Repeat it, outermost first, to go deeper
+    --compaction=compact   Reduce the payload further: drop rendering details
+                           (textAlign, softWrap, overflow, ...) and text font
+                           metrics, drop a Text element's duplicated data
+                           field, round bounds to whole logical pixels, and
+                           report visible only when an element is not visible.
+                           This is the default for most apps.
+    --compaction=none      Force the full payload.
+
+  Omit --compaction to use the app's MarionetteConfiguration.compaction
+  default.
+
+  Examples:
+    marionette -i my-app get-interactive-elements
+    marionette -i my-app get-interactive-elements --ancestor-keys grid.cell_2
+    marionette -i my-app get-interactive-elements --compaction=none
+    marionette --uri ws://127.0.0.1:8181/ws get-interactive-elements
+
+  Output (stdout), one line per element:
+    Found 3 interactive element(s):
+
+    Type: ElevatedButton, Key: "submit_button", Text: "Submit"
+    Type: TextField, Key: "email_field"
+    Type: IconButton, Text: ""
+
+  Each element may have: type, key, text, identifier, and additional
+  properties. Use the key, identifier, or text values as matchers for tap,
+  enter-text, scroll-to. On a screen that repeats the same subtree, pass
+  --ancestor-keys <wrapper key> to list just that subtree, then reuse the same
+  keys as --ancestor-keys on tap/enter-text to act inside it.
+
+---
+
+### tap
+
+Tap an element. Provide exactly one matching strategy.
+
+  Requires: -i <instance> or --uri <ws-uri>
+
+  Options:
+    --key <string>        Match by ValueKey<String> (most reliable)
+    --identifier <string> Match by Semantics identifier (stable alternative)
+    --text <string>       Match by visible text content
+    --type <string>       Match by widget type name (e.g., ElevatedButton)
+    --x <number>          X screen coordinate (use with --y)
+    --y <number>          Y screen coordinate (use with --x)
+    --ancestor-keys <str> Limit the search to the subtree of the element with
+                          this key (repeated cards, grid cells, embedded apps).
+                          Repeat it, outermost first, to go deeper
+
+  Examples:
+    marionette -i my-app tap --key submit_button
+    marionette -i my-app tap --identifier submit_button
+    marionette -i my-app tap --text "Submit"
+    marionette --uri ws://127.0.0.1:8181/ws tap --key submit_button
+    marionette -i my-app tap --x 100 --y 200
+    marionette -i my-app tap --key cell.joinButton --ancestor-keys grid.cell_2
+    marionette -i my-app tap --key cell.joinButton \
+      --ancestor-keys session_2 --ancestor-keys grid.cell_3
+
+  Output (stdout):
+    Tapped element matching {key: submit_button}
+
+---
+
+### secondary-tap
+
+Secondary (right mouse button) tap an element. Desktop only — triggers
+Flutter's onSecondaryTap (e.g. context menus). Provide exactly one matching
+strategy.
+
+  Requires: -i <instance> or --uri <ws-uri>
+
+  Options:
+    --key <string>        Match by ValueKey<String> (most reliable)
+    --identifier <string> Match by Semantics identifier (stable alternative)
+    --text <string>       Match by visible text content
+    --type <string>       Match by widget type name (e.g., ElevatedButton)
+    --x <number>          X screen coordinate (use with --y)
+    --y <number>          Y screen coordinate (use with --x)
+    --ancestor-keys <str> Limit the search to the subtree of the element with
+                          this key (repeated cards, grid cells, embedded apps).
+                          Repeat it, outermost first, to go deeper
+
+  Examples:
+    marionette -i my-app secondary-tap --key file_item
+    marionette -i my-app secondary-tap --identifier file_item
+    marionette -i my-app secondary-tap --text "Document"
+    marionette -i my-app secondary-tap --x 100 --y 200
+
+  Output (stdout):
+    Secondary tapped element matching {key: file_item}
+
+---
+
+### enter-text
+
+Enter text into a text field.
+
+  Requires: -i <instance> or --uri <ws-uri>
+
+  Options:
+    --key <string>        Match text field by key
+    --identifier <string> Match text field by Semantics identifier
+    --text <string>       Match text field by visible text
+    --focused             Target the currently focused text field
+    --ancestor-keys <str> Limit the search to the subtree of the element with
+                          this key (repeated cards, grid cells, embedded apps).
+                          Repeat it, outermost first, to go deeper
+    --input <string>      Text to enter (mandatory)
+
+  Example:
+    marionette -i my-app enter-text --key email_field --input "user@example.com"
+    marionette -i my-app enter-text --identifier email_field --input "user@example.com"
+
+  Output (stdout):
+    Entered text into element matching {key: email_field}
+
+---
+
+### press-key
+
+Press a keyboard key on the currently focused element. Unlike enter-text
+(which rewrites a field's value), this sends a real key event through the focus
+system, so onSubmitted, Shortcuts/Actions, and focus traversal all respond.
+The key goes to whatever has focus — focus a target first (e.g. with tap).
+
+  Requires: -i <instance> or --uri <ws-uri>
+
+  Options:
+    --key <string>        Key to press (mandatory). Named keys: enter, tab,
+                          escape, backspace, delete, space, arrowUp, arrowDown,
+                          arrowLeft, arrowRight, home, end, pageUp, pageDown.
+                          Also a single character a-z or 0-9.
+    --modifiers <list>    Comma-separated modifiers to hold: control, shift,
+                          alt, meta. On macOS use meta for the Command key.
+
+  Examples:
+    marionette -i my-app press-key --key enter
+    marionette -i my-app press-key --key tab
+    marionette -i my-app press-key --key a --modifiers control
+    marionette --uri ws://127.0.0.1:8181/ws press-key --key arrowDown
+
+  Output (stdout):
+    Pressed key: enter
+    Pressed key: control+a
+
+  Notes:
+    - A character is only typed for an unmodified (or shift-only) printable
+      key; control+a activates select-all rather than typing "a".
+    - Modifier combos match Flutter Shortcuts/SingleActivator.
+
+---
+
+### press-back-button
+
+Simulate a system back button press (Android back / iOS swipe-back).
+
+  Requires: -i <instance> or --uri <ws-uri>
+
+  Example:
+    marionette -i my-app press-back-button
+
+  Output (stdout):
+    Back button pressed, route was popped
+
+  Output if on root route (stdout):
+    Back button pressed, no route to pop (app may exit)
+
+  Notes:
+    - Works with Navigator, GoRouter, and other routing solutions.
+    - If the app is on the root route, the system may minimize or close the
+      app (same as real back button behavior on Android).
+    - Respects PopScope / WillPopScope widgets.
+
+---
+
+### swipe
+
+Swipe/drag on the app. Useful for PageView, Dismissible, Drawer, and Slider.
+Use either element-based mode (matcher + direction) or coordinate-based mode.
+
+  Requires: -i <instance> or --uri <ws-uri>
+
+  Element-based options:
+    --key <string>        Match by ValueKey<String> (most reliable)
+    --identifier <string> Match by Semantics identifier (stable alternative)
+    --text <string>       Match by visible text content
+    --type <string>       Match by widget type name (e.g., PageView)
+    --ancestor-keys <str> Limit the search to the subtree of the element with
+                          this key (repeated cards, grid cells, embedded apps).
+                          Repeat it, outermost first, to go deeper
+    --direction <dir>     left, right, up, or down (required for this mode)
+    --distance <number>   Swipe distance in pixels (default: 200)
+
+  Coordinate-based options (all required together):
+    --start-x <number>    Start X coordinate
+    --start-y <number>    Start Y coordinate
+    --end-x <number>      End X coordinate
+    --end-y <number>      End Y coordinate
+
+  Examples:
+    marionette -i my-app swipe --type PageView --direction left
+    marionette -i my-app swipe --key carousel --direction right --distance 300
+    marionette -i my-app swipe --start-x 300 --start-y 400 --end-x 50 --end-y 400
+
+  Output (stdout):
+    Swiped left on element matching: {type: PageView}
+    Swiped from (300.0, 400.0) to (50.0, 400.0)
+
+---
+
+### scroll-to
+
+Scroll until an element becomes visible.
+
+  Requires: -i <instance> or --uri <ws-uri>
+
+  Options:
+    --key <string>        Match by ValueKey<String>
+    --identifier <string> Match by Semantics identifier
+    --text <string>       Match by visible text content
+    --ancestor-keys <str> Limit the search to the subtree of the element with
+                          this key (repeated cards, grid cells, embedded apps).
+                          Repeat it, outermost first, to go deeper
+
+  Example:
+    marionette -i my-app scroll-to --text "Bottom Item"
+
+  Output (stdout):
+    Scrolled to element matching {text: Bottom Item}
+
+---
+
+### take-screenshots
+
+Capture screenshots and save to PNG files.
+
+  Requires: -i <instance> or --uri <ws-uri>
+
+  Options:
+    -o, --output <path>   Output file path (mandatory)
+    --open                Open the file after saving
+
+  Example:
+    marionette -i my-app take-screenshots --output ./screenshot.png
+
+  Output (stdout):
+    Saved screenshot: ./screenshot.png
+
+  Multi-view apps produce numbered files:
+    Saved screenshot: ./screenshot.png
+    Saved screenshot: ./screenshot_1.png
+
+---
+
+### record-video
+
+Record a video of the running Flutter app and save to a WebM file.
+Requires ffmpeg to be installed.
+
+  Requires: -i <instance> or --uri <ws-uri>
+
+  Options:
+    -o, --output <path>       Output file path (mandatory, must end with .webm)
+    -d, --duration <seconds>  Recording duration — records until Ctrl+C if not set
+    --width <pixels>          Video width in pixels
+    --height <pixels>         Video height in pixels
+    --open                    Open the video after recording
+    --ffmpeg-path <path>      Path to ffmpeg binary (default: ffmpeg)
+    -v, --verbose             Print diagnostic details (probe response, frame counts)
+    --transport <mode>        Frame transport: auto (default), tcp, ws
+                              auto: try TCP, fall back to reverse-WS via adb
+                              tcp:  force TCP (fail if unreachable)
+                              ws:   force reverse-WS (requires adb)
+    --frame-port <port>       Use a specific TCP port for frame streaming instead
+                              of auto-negotiation (mutually exclusive with --transport ws)
+
+  Examples:
+    marionette -i my-app record-video --output ./recording.webm
+    marionette -i my-app record-video -o ./demo.webm -d 10
+    marionette --uri ws://127.0.0.1:8181/ws record-video -o ./recording.webm --width 1280 --height 720
+    marionette -i my-app record-video -o ./demo.webm --transport ws
+
+  Output (stdout):
+    Starting screencast...
+    Recording 640x480 video to ./recording.webm...
+    Press Ctrl+C to stop recording.
+    Recording complete: ./recording.webm (10s, 250 frames)
+
+  Prerequisites:
+    ffmpeg must be installed and on PATH (or specify --ffmpeg-path).
+      macOS:   brew install ffmpeg
+      Ubuntu:  sudo apt install ffmpeg
+      Windows: winget install ffmpeg
+
+  Exit codes: 0 success, 1 ffmpeg not found or recording failed, 64 invalid options
+
+---
+
+### get-logs
+
+Retrieve collected application logs.
+
+  Requires: -i <instance> or --uri <ws-uri>
+
+  Example:
+    marionette -i my-app get-logs
+
+  Output (stdout):
+    Collected 5 log entries:
+
+    [INFO] App started
+    [DEBUG] Loading data...
+    ...
+
+  Output if empty (stdout):
+    No logs collected.
+
+---
+
+### set-device-config
+
+Override the device configuration the running app sees — text scale, bold text,
+light/dark appearance — without touching real device settings. Use it to sweep
+a screen under accessibility or appearance conditions.
+
+Requires the app to wrap its root widget in MarionetteDeviceConfig:
+
+    runApp(const MarionetteDeviceConfig(child: MyApp()));
+
+  Requires: -i <instance> or --uri <ws-uri>
+  At least one of: --text-scale, --bold-text, --platform-brightness, --reset
+
+  Options:
+    --text-scale <n>              Linear text scale, > 0 (1.0 default, 2.0 very
+                                  large; real devices top out around 3.0)
+    --bold-text <true|false>      System bold-text setting
+    --platform-brightness <light|dark>
+                                  System light/dark appearance
+    --reset                       Clear every override; applied before the
+                                  other options in the same call
+
+  Examples:
+    marionette -i my-app set-device-config --text-scale 2.0
+    marionette -i my-app set-device-config --platform-brightness dark
+    marionette -i my-app set-device-config --reset --text-scale 1.5
+    marionette -i my-app set-device-config --reset
+
+  Output (stdout, exit 0):
+    Device config updated
+
+  Output if the app did not opt in (stderr, exit 1):
+    Error: Device config overrides are not available in this app. ...
+
+  Omitted options keep their current override. Reverting a single field means
+  --reset plus the fields worth keeping.
+
+---
+
+### hot-reload
+
+Perform a hot reload of the Flutter app.
+
+  Requires: -i <instance> or --uri <ws-uri>
+
+  Example:
+    marionette -i my-app hot-reload
+
+  Output (stdout, exit 0):
+    Hot reload completed successfully.
+
+  Output on failure (stderr, exit 1):
+    Hot reload failed. The app may need a full restart.
+
+---
+
+### hot-restart
+
+Perform a hot restart of the Flutter app. Fully restarts the app from main()
+and resets all state. Use it for changes a hot reload cannot pick up (e.g.
+main()/bootstrap edits, global singletons, or state shape). Requires the app
+to be running via `flutter run`.
+
+  Requires: -i <instance> or --uri <ws-uri>
+
+  Example:
+    marionette -i my-app hot-restart
+
+  Output (stdout, exit 0):
+    Hot restart completed successfully.
+
+  Output on failure (stderr, exit 1):
+    Hot restart failed or is unavailable. Make sure the app is running via `flutter run`.
+
+---
+
+### doctor
+
+Check connectivity of all registered instances.
+
+  Example:
+    marionette doctor
+
+  Output (stdout):
+    Checking 2 instance(s)...
+
+      my-app (ws://127.0.0.1:8181/ws) ... OK
+      other-app (ws://127.0.0.1:9090/ws) ... FAILED
+
+    Some instances are unreachable. Use "marionette unregister <name>" to remove stale entries.
+
+  Exit codes: 0 all reachable, 1 any unreachable
+
+---
+
+### mcp
+
+Run the Marionette MCP server (preserves original marionette_mcp behavior).
+
+  Options:
+    -l, --log-level <level>   FINEST|FINER|FINE|CONFIG|INFO|WARNING|SEVERE (default: INFO)
+    --log-file <path>         Log file path (default: stderr)
+    --sse-port <port>         Use SSE transport on this port (default: stdio)
+
+  Example:
+    marionette mcp
+    marionette mcp --sse-port 3000
+
+---
+
+## Exit Codes
+
+  0    Success
+  1    Runtime error (connection failed, command failed, app unreachable)
+  64   Usage error (missing arguments, invalid options)
+
+## Error Recovery
+
+If a command fails with a connection error, the app may have stopped.
+
+- **--instance mode**: Run `marionette doctor` to check all instances, then
+  `marionette unregister <name>` to clean up stale entries.
+- **--uri mode**: Verify the URI is correct and the app is still running.
+  Re-run `flutter run` if needed and use the new URI.
+
+## Tips
+
+- Prefer --uri for one-off interactions (no setup/cleanup overhead)
+- Prefer --instance for repeated interactions with the same app (shorter commands)
+- Prefer --key over --text for matching elements (keys are stable, text may change)
+- --identifier (Semantics identifier) is an equally stable alternative to --key
+  when a widget has no ValueKey but does set an accessibility identifier
+- --ancestor-keys scopes a match to one subtree when the same key repeats across
+  identical subtrees; repeat it (outermost first) when the wrapper key itself
+  repeats. Every key must exist or the command fails
+- Run `get-interactive-elements` first to discover what's on screen before interacting;
+  add --ancestor-keys to list just one subtree on busy screens
+- Instance names allow any characters except "/", "\", or control characters (e.g. device IDs like 192.168.1.1:5555)
+- Commands are stateless — each opens a fresh connection, so no session management needed
+''';

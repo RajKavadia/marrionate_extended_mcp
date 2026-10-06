@@ -1,0 +1,15 @@
+{
+  "name": "notifications_toggle_state",
+  "description": "Toggle every switch and assert the state summary changes. Uses the real switch handlers, not the upstream no-ops.",
+  "commands": [
+    { "action": "tap", "key": "home_notifications" },
+    { "action": "assert_visible", "key": "notifications_state" },
+    { "action": "assert_text_contains", "key": "notifications_state", "text": "push=true" },
+    { "action": "tap", "key": "email_notifications_switch" },
+    { "action": "assert_text_contains", "key": "notifications_state", "text": "email=true" },
+    { "action": "tap", "key": "push_notifications_switch" },
+    { "action": "assert_text_contains", "key": "notifications_state", "text": "push=false" },
+    { "action": "tap", "key": "inapp_notifications_switch" },
+    { "action": "assert_text_contains", "key": "notifications_state", "text": "inapp=false" }
+  ]
+}

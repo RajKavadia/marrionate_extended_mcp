@@ -1,0 +1,13 @@
+{
+  "name": "custom_widget_interaction",
+  "description": "Tap a custom design-system tile and assert the count increments. Proves the toolkits can drive non-Material widgets.",
+  "commands": [
+    { "action": "tap", "key": "home_settings" },
+    { "action": "tap", "key": "settings_custom_widgets" },
+    { "action": "assert_visible", "key": "ds_tile_tappable" },
+    { "action": "assert_visible", "key": "ds_tile_static" },
+    { "action": "assert_text_contains", "key": "ds_tile_tap_count", "text": "taps: 0" },
+    { "action": "tap", "key": "ds_tile_tappable" },
+    { "action": "assert_text_contains", "key": "ds_tile_tap_count", "text": "taps: 1" }
+  ]
+}

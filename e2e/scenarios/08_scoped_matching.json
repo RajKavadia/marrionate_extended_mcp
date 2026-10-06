@@ -1,0 +1,12 @@
+{
+  "name": "scoped_matching_ancestors",
+  "description": "Target an ambiguously-keyed child by scoping to its card. Three cards each hold a child with the identical key 'scoped_child', so an unscoped tap would be ambiguous.",
+  "commands": [
+    { "action": "tap", "key": "home_settings" },
+    { "action": "tap", "key": "settings_scoped_matching" },
+    { "action": "assert_visible", "key": "scoped_card_a" },
+    { "action": "assert_visible", "key": "scoped_card_b" },
+    { "action": "tap", "key": "scoped_child", "ancestor_keys": ["scoped_card_b"] },
+    { "action": "assert_text_contains", "key": "scoped_card_b", "text": "active" }
+  ]
+}

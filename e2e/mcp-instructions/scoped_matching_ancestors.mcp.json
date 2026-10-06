@@ -1,0 +1,93 @@
+{
+  "format": "flutter-e2e-mcp-instructions",
+  "formatVersion": 1,
+  "server": "flutter-e2e-mcp",
+  "scenario": "scoped_matching_ancestors",
+  "description": "Target an ambiguously-keyed child by scoping to its card. Three cards each hold a child with the identical key 'scoped_child', so an unscoped tap would be ambiguous.",
+  "transportPreference": "marionetteFirst",
+  "attachTargetPlaceholder": "{{VM_SERVICE_URI}}",
+  "attach": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": {
+      "name": "connect_app",
+      "arguments": {
+        "target": "{{VM_SERVICE_URI}}",
+        "kind": "vmService"
+      }
+    }
+  },
+  "instructions": [
+    {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_tap",
+        "arguments": {
+          "key": "home_settings"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_tap",
+        "arguments": {
+          "key": "settings_scoped_matching"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 4,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_assert_visible",
+        "arguments": {
+          "key": "scoped_card_a"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 5,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_assert_visible",
+        "arguments": {
+          "key": "scoped_card_b"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 6,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_tap",
+        "arguments": {
+          "key": "scoped_child",
+          "ancestor_keys": [
+            "scoped_card_b"
+          ]
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 7,
+      "method": "tools/call",
+      "params": {
+        "name": "mcp_assert_text_contains",
+        "arguments": {
+          "key": "scoped_card_b",
+          "text": "active"
+        }
+      }
+    }
+  ]
+}

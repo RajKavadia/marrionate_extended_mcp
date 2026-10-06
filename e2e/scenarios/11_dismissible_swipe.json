@@ -1,0 +1,13 @@
+{
+  "name": "dismissible_swipe",
+  "description": "Open the dismissible list entry and swipe away the first row.",
+  "commands": [
+    { "action": "tap", "key": "home_settings" },
+    { "action": "tap", "key": "settings_dismissible" },
+    { "action": "assert_visible", "key": "items_list" },
+    { "action": "assert_visible", "key": "item_row_0" },
+    { "action": "swipe", "key": "item_0", "direction": "left" },
+    { "action": "assert_not_visible", "key": "item_row_0" },
+    { "action": "assert_visible", "key": "item_row_1" }
+  ]
+}

@@ -1,0 +1,33 @@
+# Dart / Flutter build output
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+pubspec.lock
+
+# pubspec.lock is committed for the demo app and CI reproducibility in the
+# vendored forks' upstream repos, but is ignored here because every package in
+# this monorepo is a library or a server, not an application with a pinned
+# dependency set that users share.
+!packages/app/pubspec.lock
+
+# Node
+node_modules/
+*.tgz
+npm-debug.log*
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# E2E artifacts produced at runtime
+.marionette/
+e2e/.recordings/
+*.junit.xml
+e2e-report.*

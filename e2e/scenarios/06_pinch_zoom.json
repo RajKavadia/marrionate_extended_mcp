@@ -1,0 +1,12 @@
+{
+  "name": "pinch_zoom_reset",
+  "description": "Zoom, then reset and assert the scale text returns to 1.00. Covers gesture plus a state-resetting control.",
+  "commands": [
+    { "action": "tap", "key": "home_settings" },
+    { "action": "tap", "key": "settings_pinch_zoom" },
+    { "action": "assert_visible", "key": "zoomable" },
+    { "action": "assert_text_contains", "key": "scale_text", "text": "Scale: 1.00" },
+    { "action": "tap", "key": "reset_zoom_button" },
+    { "action": "assert_text_contains", "key": "scale_text", "text": "Scale: 1.00" }
+  ]
+}

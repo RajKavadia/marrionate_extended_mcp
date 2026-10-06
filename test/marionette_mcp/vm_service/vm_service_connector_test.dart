@@ -1,0 +1,263 @@
+import 'package:marrionate_extended_mcp/src/marionette_mcp/src/vm_service/vm_service_connector.dart';
+import 'package:test/test.dart';
+import 'package:vm_service/vm_service.dart';
+
+void main() {
+  group('VmServiceExtensionException.fromRpcError', () {
+    test('preserves application-side extension details', () {
+      final exception = VmServiceExtensionException.fromRpcError(
+        'custom.failure',
+        RPCError.withDetails(
+          'ext.flutter.custom.failure',
+          -32000,
+          'Server error',
+          details: 'callback failed\napplication stack',
+        ),
+      );
+
+      expect(exception.message, 'Extension custom.failure failed');
+      expect(exception.errorCode, -32000);
+      expect(exception.error, contains('callback failed'));
+      expect(exception.error, contains('application stack'));
+    });
+
+    test('falls back to the protocol message without details', () {
+      final exception = VmServiceExtensionException.fromRpcError(
+        'custom.failure',
+        RPCError('ext.flutter.custom.failure', -32000, 'Server error'),
+      );
+
+      expect(exception.error, 'Server error');
+    });
+
+    test('stringifies structured application-side details', () {
+      final exception = VmServiceExtensionException.fromRpcError(
+        'custom.failure',
+        RPCError.withDetails(
+          'ext.flutter.custom.failure',
+          -32000,
+          'Server error',
+          details: <String, Object?>{
+            'reason': 'callback failed',
+            'retryable': false,
+          },
+        ),
+      );
+
+      expect(exception.error, contains('callback failed'));
+      expect(exception.error, contains('retryable: false'));
+    });
+  });
+
+  group('VmServiceConnector.callCustomExtension', () {
+    late VmServiceConnector connector;
+
+    setUp(() {
+      connector = VmServiceConnector();
+    });
+
+    test('throws ArgumentError when extension name is empty', () {
+      expect(
+        () => connector.callCustomExtension(''),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    test(
+      'throws ArgumentError when extension name contains ext.flutter. prefix',
+      () {
+        expect(
+          () => connector.callCustomExtension('ext.flutter.myExtension'),
+          throwsA(
+            isA<ArgumentError>().having(
+              (e) => e.message,
+              'message',
+              contains('must not include the "ext.flutter." prefix'),
+            ),
+          ),
+        );
+      },
+    );
+
+    test('throws NotConnectedException when not connected', () async {
+      await expectLater(
+        connector.callCustomExtension('myExtension'),
+        throwsA(isA<NotConnectedException>()),
+      );
+    });
+
+    test('accepts valid extension name with default empty args', () async {
+      // Should throw NotConnectedException (not ArgumentError),
+      // meaning validation passed.
+      await expectLater(
+        connector.callCustomExtension('deckNavigation.goToSlide'),
+        throwsA(isA<NotConnectedException>()),
+      );
+    });
+
+    test('accepts valid extension name with custom args', () async {
+      await expectLater(
+        connector.callCustomExtension('deckNavigation.goToSlide', {
+          'slideNumber': '3',
+        }),
+        throwsA(isA<NotConnectedException>()),
+      );
+    });
+  });
+
+  group('VmServiceConnector.doubleTap', () {
+    late VmServiceConnector connector;
+
+    setUp(() {
+      connector = VmServiceConnector();
+    });
+
+    test('throws NotConnectedException with default delay', () async {
+      await expectLater(
+        connector.doubleTap({'key': 'my_button'}),
+        throwsA(isA<NotConnectedException>()),
+      );
+    });
+
+    test('throws NotConnectedException with custom delay', () async {
+      await expectLater(
+        connector.doubleTap({'key': 'my_button'}, delayMs: 200),
+        throwsA(isA<NotConnectedException>()),
+      );
+    });
+
+    test('throws NotConnectedException with coordinate matcher', () async {
+      await expectLater(
+        connector.doubleTap({'x': 100, 'y': 200}),
+        throwsA(isA<NotConnectedException>()),
+      );
+    });
+  });
+
+  group('VmServiceConnector.longPress', () {
+    late VmServiceConnector connector;
+
+    setUp(() {
+      connector = VmServiceConnector();
+    });
+
+    test('throws NotConnectedException with default duration', () async {
+      await expectLater(
+        connector.longPress({'key': 'my_button'}),
+        throwsA(isA<NotConnectedException>()),
+      );
+    });
+
+    test('throws NotConnectedException with custom duration', () async {
+      await expectLater(
+        connector.longPress({'key': 'my_button'}, durationMs: 300),
+        throwsA(isA<NotConnectedException>()),
+      );
+    });
+
+    test('throws NotConnectedException with coordinate matcher', () async {
+      await expectLater(
+        connector.longPress({'x': 100, 'y': 200}),
+        throwsA(isA<NotConnectedException>()),
+      );
+    });
+  });
+
+  group('VmServiceConnector.enterText', () {
+    late VmServiceConnector connector;
+
+    setUp(() {
+      connector = VmServiceConnector();
+    });
+
+    test(
+      'accepts focused matcher and falls through to connection validation',
+      () async {
+        await expectLater(
+          connector.enterText({'focused': true}, 'Hello'),
+          throwsA(isA<NotConnectedException>()),
+        );
+      },
+    );
+  });
+
+  group('VmServiceConnector.pinchZoom', () {
+    late VmServiceConnector connector;
+
+    setUp(() {
+      connector = VmServiceConnector();
+    });
+
+    test('throws NotConnectedException when not connected', () async {
+      await expectLater(
+        connector.pinchZoom({'key': 'map'}, scale: 2.0),
+        throwsA(isA<NotConnectedException>()),
+      );
+    });
+
+    test(
+      'throws NotConnectedException with coordinates and custom distance',
+      () async {
+        await expectLater(
+          connector.pinchZoom(
+            {'x': 100, 'y': 200},
+            scale: 0.5,
+            startDistance: 300,
+          ),
+          throwsA(isA<NotConnectedException>()),
+        );
+      },
+    );
+
+    group('VmServiceConnector.pressBackButton', () {
+      late VmServiceConnector connector;
+
+      setUp(() {
+        connector = VmServiceConnector();
+      });
+
+      test('throws NotConnectedException when not connected', () async {
+        await expectLater(
+          connector.pressBackButton(),
+          throwsA(isA<NotConnectedException>()),
+        );
+      });
+    });
+  });
+
+  group('interactiveElementsArgs', () {
+    test('sends the compaction mode by name', () {
+      // The VM service delivers params to the app as a Map<String, String>,
+      // and the app parses these names back into its CompactionMode enum.
+      expect(interactiveElementsArgs('none'), {'compaction': 'none'});
+      expect(interactiveElementsArgs('compact'), {'compaction': 'compact'});
+      expect(interactiveElementsArgs(null), isEmpty,
+          reason: 'an omitted key is what selects the app default');
+    });
+
+    test('JSON-encodes ancestor keys and omits an empty chain', () {
+      expect(
+        interactiveElementsArgs(null, ancestorKeys: ['session_2', 'cell']),
+        {'ancestor_keys': '["session_2","cell"]'},
+      );
+      expect(interactiveElementsArgs('compact', ancestorKeys: const []),
+          {'compaction': 'compact'});
+    });
+  });
+
+  group('invalidCompactionError', () {
+    test('accepts null and every supported mode', () {
+      expect(invalidCompactionError(null), isNull);
+      for (final mode in supportedCompactionModes) {
+        expect(invalidCompactionError(mode), isNull);
+      }
+    });
+
+    test('rejects an unknown mode, naming the supported ones', () {
+      final error = invalidCompactionError('ultra');
+
+      expect(error, contains('ultra'));
+      expect(error, contains('none, compact'));
+    });
+  });
+}

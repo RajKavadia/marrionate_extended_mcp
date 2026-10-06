@@ -1,0 +1,47 @@
+name: marrionate_extended_mcp
+description: >-
+  Unified Flutter end-to-end automation toolkit: MCP server, app-side bindings,
+  scenario model, replay runtime, key injection builder, and vendored
+  marionette/flutter-skill drivers behind a single package.
+version: 0.1.0
+repository: https://github.com/RajKavadia/marrionate_extended_mcp
+issue_tracker: https://github.com/RajKavadia/marrionate_extended_mcp/issues
+topics:
+  - testing
+  - e2e
+  - flutter
+  - automation
+  - mcp
+
+environment:
+  sdk: ^3.6.0
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  analyzer: ^8.0.0
+  args: ^2.7.0
+  build: ^4.0.7
+  crypto: ^3.0.0
+  http: ^1.2.0
+  logging: ^1.3.0
+  logger: ^2.0.0
+  mcp_dart: ^2.1.0
+  meta: ^1.15.0
+  path: ^1.9.0
+  stack_trace: ^1.12.0
+  vm_service: ">=14.0.0 <16.0.0"
+  web: ^1.1.0
+  web_socket_channel: ^3.0.0
+  yaml: ^3.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  build_runner: ^2.4.0
+  lints: ^5.0.0
+  test: ^1.25.0
+
+flutter:
+  uses-material-design: true

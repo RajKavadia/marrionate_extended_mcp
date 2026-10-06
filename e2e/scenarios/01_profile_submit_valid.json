@@ -1,0 +1,14 @@
+{
+  "name": "profile_submit_valid",
+  "description": "Fill the profile form with valid input and assert the submitted result.",
+  "commands": [
+    { "action": "tap", "key": "home_profile" },
+    { "action": "assert_visible", "key": "name_field" },
+    { "action": "assert_visible", "key": "submit_button" },
+    { "action": "enter_text", "key": "name_field", "text": "Ada Lovelace" },
+    { "action": "enter_text", "key": "email_field", "text": "ada@example.com" },
+    { "action": "tap", "key": "submit_button" },
+    { "action": "assert_visible", "key": "profile_result" },
+    { "action": "assert_text_contains", "key": "profile_result", "text": "submitted" }
+  ]
+}
